@@ -1,0 +1,112 @@
+ext {
+    set('spring-boot.version', '2.1.2.RELEASE')
+    // copied from above
+    set('spring.version', '5.1.4.RELEASE')
+    // async logging
+    set('lmax-disruptor.version', '3.4.2')
+    // misc utils
+    set('unexceptional.version', '1.0.0')
+    set('mapstruct.version', '1.3.0.Final')
+    // tooling
+    set('jetbrains-annotations.version', '16.0.2')
+}
+
+group 'com.acme'
+version '1.0.0-SNAPSHOT'
+
+apply plugin: 'java-library'
+
+sourceCompatibility = 1.8
+
+repositories {
+    mavenCentral()
+    jcenter()
+    maven {
+        url 'https://repo.spring.io/libs-milestone'
+    }
+}
+
+configurations {
+    springBom
+    developmentOnly
+
+    // we want to make sure the dependencies bom ia available everywhere so that the dependencies can be resolved across all configurations
+    compileOnly.extendsFrom(springBom)
+    annotationProcessor.extendsFrom(springBom)
+    testAnnotationProcessor.extendsFrom(springBom)
+    api.extendsFrom(springBom)
+    implementation.extendsFrom(springBom)
+
+    runtimeClasspath {
+        extendsFrom developmentOnly
+    }
+
+    // lets inherit everything
+    testCompileOnly.extendsFrom(compileOnly)
+}
+
+dependencies {
+    //*** bill of materials
+    springBom platform("org.springframework.boot:spring-boot-dependencies:${project.'spring-boot.version'}")
+
+    implementation 'org.springframework:spring-context'
+    implementation 'org.springframework.data:spring-data-jpa'
+    implementation 'org.hibernate:hibernate-core'
+    implementation 'com.h2database:h2'
+
+    // web
+    implementation 'org.springframework:spring-web'
+    implementation 'org.springframework:spring-webmvc'
+
+    // jackson for json serialization
+    implementation 'com.fasterxml.jackson.core:jackson-databind'
+    implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jdk8' // new java 8 classes like stream, OPtional
+    implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310' // new java date & time api
+    implementation 'com.fasterxml.jackson.module:jackson-module-parameter-names' // custom modules within jackson
+
+    // embedded server
+    implementation 'org.apache.tomcat.embed:tomcat-embed-jasper'
+
+    // log4j2
+    implementation 'org.apache.logging.log4j:log4j-core'
+    implementation 'org.apache.logging.log4j:log4j-slf4j-impl'
+    implementation 'org.apache.logging.log4j:log4j-jcl'
+    implementation 'org.apache.logging.log4j:log4j-jul'
+    implementation "com.lmax:disruptor:${project.'lmax-disruptor.version'}"
+
+    // unexceptional for making sure code is not super polluted
+    implementation "io.earcam:io.earcam.unexceptional:${project.'unexceptional.version'}"
+
+    // junit
+    testImplementation 'org.junit.jupiter:junit-jupiter-api'
+    testImplementation 'org.junit.jupiter:junit-jupiter-engine'
+    testImplementation 'org.junit.jupiter:junit-jupiter-params'
+    testImplementation 'org.mockito:mockito-junit-jupiter'
+
+    // test misc
+    testImplementation 'org.assertj:assertj-core'
+    testImplementation 'org.hamcrest:hamcrest-library'
+    testImplementation 'org.mockito:mockito-junit-jupiter'
+
+    // NOTE: Due to a bug as of now mapstruct needs to go before lombok
+    // https://github.com/mapstruct/mapstruct/issues/1581
+
+    // maspstruct
+    implementation "org.mapstruct:mapstruct:${project.'mapstruct.version'}"
+    implementation "org.mapstruct:mapstruct:${project.'mapstruct.version'}"
+    annotationProcessor "org.mapstruct:mapstruct-processor:${project.'mapstruct.version'}"
+    testAnnotationProcessor "org.mapstruct:mapstruct-processor:${project.'mapstruct.version'}"
+
+    // lombok
+    compileOnly('org.projectlombok:lombok')
+    annotationProcessor('org.projectlombok:lombok')
+}
+
+configurations {
+    all {
+        // we need to exclude logging to avoid keeping both slf4j & log4j2 both in the same location
+        exclude group: 'org.springframework.boot', module: 'spring-boot-starter-logging'
+        // `spring-boot-starter-test` is pulling older version of junit. Lets just ignore it
+        exclude group: 'junit', module: 'junit'
+    }
+}
